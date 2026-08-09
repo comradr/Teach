@@ -3,6 +3,8 @@ name: Build MKSH APK
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -53,6 +55,7 @@ jobs:
           path: artifacts/*
 
       - name: Publish release asset
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
