@@ -16,11 +16,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Unpack current project
+        run: |
+          mkdir -p project
+          unzip -tq MKSH_Planner_build_ready.zip
+          unzip -q MKSH_Planner_build_ready.zip -d project
+          chmod +x project/gradlew
+
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            project/**/*.gradle*
+            project/gradle/wrapper/gradle-wrapper.properties
+            project/gradle/libs.versions.toml
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
@@ -29,13 +41,6 @@ jobs:
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "build-tools;36.0.0" "platforms;android-36.1"
-
-      - name: Unpack current project
-        run: |
-          mkdir -p project
-          unzip -tq MKSH_Planner_build_ready.zip
-          unzip -q MKSH_Planner_build_ready.zip -d project
-          chmod +x project/gradlew
 
       - name: Inject Gemini key
         env:
