@@ -20,6 +20,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
@@ -45,7 +46,19 @@ jobs:
             mv "$ROOT"/* project/
           fi
           chmod +x project/gradlew
-          echo "Project files: $(find project -type f | wc -l)"
+          echo "Project files before patch: $(find project -type f | wc -l)"
+
+      - name: Apply current fixes
+        run: |
+          base64 -d mksh-overlay.patch.gz.b64 | gzip -dc > /tmp/mksh-overlay.patch
+          cd project
+          git init -q
+          git apply --check /tmp/mksh-overlay.patch
+          git apply /tmp/mksh-overlay.patch
+          echo "Overlay applied successfully."
+          test -f app/src/main/java/com/example/GeminiApiKeyProvider.kt
+          test -f app/src/main/java/com/example/GeminiErrorMapper.kt
+          grep -q 'x-goog-api-key' app/src/main/java/com/example/GeminiApiService.kt
 
       - name: Inject Gemini key when configured
         env:
@@ -55,8 +68,12 @@ jobs:
             printf 'GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY" > project/.env
             echo "Gemini key injected from GitHub Actions secret."
           else
-            echo "GEMINI_API_KEY secret is not configured; build will use .env.example placeholder."
+            echo "GEMINI_API_KEY secret is not configured. APK can accept the key from the in-app Gemini settings."
           fi
+
+      - name: Run unit tests
+        working-directory: project
+        run: ./gradlew --no-daemon testDebugUnitTest --stacktrace
 
       - name: Build debug APK
         working-directory: project
@@ -65,13 +82,14 @@ jobs:
       - name: Collect APK
         run: |
           mkdir -p artifacts
-          cp project/app/build/outputs/apk/debug/app-debug.apk artifacts/MKSH-Planner-current-debug.apk
-          sha256sum artifacts/MKSH-Planner-current-debug.apk > artifacts/SHA256.txt
+          cp project/app/build/outputs/apk/debug/app-debug.apk artifacts/MKSH-Planner-fixed-debug.apk
+          sha256sum artifacts/MKSH-Planner-fixed-debug.apk > artifacts/SHA256.txt
+          ls -lh artifacts/MKSH-Planner-fixed-debug.apk
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MKSH-Planner-current-debug
+          name: MKSH-Planner-fixed-debug
           path: artifacts/*
 
       - name: Publish release asset
@@ -82,7 +100,7 @@ jobs:
           git tag -f build-current
           git push -f origin build-current
           gh release create build-current \
-            artifacts/MKSH-Planner-current-debug.apk \
+            artifacts/MKSH-Planner-fixed-debug.apk \
             artifacts/SHA256.txt \
-            --title "MKSH Planner current debug" \
-            --notes "Automated build from MKSH_Planner_build_ready.zip."
+            --title "MKSH Planner fixed debug" \
+            --notes "Automated test + build with Gemini error handling and in-app API key settings fixes."
