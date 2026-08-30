@@ -1,0 +1,81 @@
+name: Diagnose Gemini
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check configured Gemini access
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import urllib.error
+          import urllib.request
+
+          key = os.environ.get("GEMINI_API_KEY", "").strip()
+          if not key:
+              print("diagnostic={\"configured\":false}")
+              raise SystemExit(0)
+
+          url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"
+          payload = json.dumps({
+              "contents": [{"parts": [{"text": "Ответь одним словом: готово"}]}]
+          }).encode("utf-8")
+          request = urllib.request.Request(
+              url,
+              data=payload,
+              headers={"Content-Type": "application/json", "x-goog-api-key": key},
+              method="POST",
+          )
+
+          def collect(value, found):
+              if isinstance(value, dict):
+                  for name, nested in value.items():
+                      if name in {"quotaId", "quotaMetric", "quotaValue", "retryDelay"}:
+                          found[name] = nested
+                      collect(nested, found)
+              elif isinstance(value, list):
+                  for nested in value:
+                      collect(nested, found)
+
+          try:
+              with urllib.request.urlopen(request, timeout=45) as response:
+                  json.loads(response.read().decode("utf-8"))
+                  print("diagnostic=" + json.dumps({
+                      "configured": True,
+                      "http": response.status,
+                      "generation": "success"
+                  }, ensure_ascii=False))
+          except urllib.error.HTTPError as error:
+              raw = error.read().decode("utf-8", errors="replace")
+              raw = re.sub(r"AIza[0-9A-Za-z_-]+", "[redacted]", raw)
+              try:
+                  body = json.loads(raw)
+              except json.JSONDecodeError:
+                  body = {}
+              google_error = body.get("error", {}) if isinstance(body, dict) else {}
+              quota = {}
+              collect(google_error.get("details", []), quota)
+              message = str(google_error.get("message", ""))
+              print("diagnostic=" + json.dumps({
+                  "configured": True,
+                  "http": error.code,
+                  "status": google_error.get("status"),
+                  "message": message[:300],
+                  "quota": quota,
+              }, ensure_ascii=False))
+          except Exception as error:
+              print("diagnostic=" + json.dumps({
+                  "configured": True,
+                  "transport": type(error).__name__,
+              }))
+          PY
