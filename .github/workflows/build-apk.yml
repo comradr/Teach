@@ -35,8 +35,23 @@ jobs:
         run: |
           rm -rf project
           mkdir project
-          unzip -q project.zip -d project
+          unzip -tq mksh-planner-v2.zip
+          unzip -q mksh-planner-v2.zip -d project
+          if [ ! -f project/gradlew ]; then
+            ROOT="$(find project -mindepth 1 -maxdepth 2 -type f -name gradlew -printf '%h\n' | head -n1)"
+            if [ -n "$ROOT" ]; then
+              shopt -s dotglob
+              mv "$ROOT"/* project/
+            fi
+          fi
           chmod +x project/gradlew
+
+      - name: Inspect project revision
+        run: |
+          echo "Project files: $(find project -type f | wc -l)"
+          grep -n "class LessonPlanValidator\|object LessonPlanValidator" project/app/src/main/java/com/example/LessonPlanValidator.kt 2>/dev/null || true
+          grep -n "MarkdownSectionUtils" project/app/src/main/java/com/example/MarkdownSectionUtils.kt 2>/dev/null || true
+          grep -n "leq" project/app/src/main/java/com/example/LessonTextSanitizer.kt 2>/dev/null || true
 
       - name: Build debug APK
         working-directory: project
