@@ -66,6 +66,16 @@ jobs:
             exit 1
           fi
 
+      - name: Apply Gemini IPv4 fallback
+        run: |
+          base64 -d mksh-ipv4-fallback.patch.gz.b64 | gzip -dc > /tmp/mksh-ipv4-fallback.patch
+          cd project
+          git apply --check /tmp/mksh-ipv4-fallback.patch
+          git apply /tmp/mksh-ipv4-fallback.patch
+          grep -q 'ipv4OnlyDns' app/src/main/java/com/example/GeminiApiService.kt
+          grep -q 'isLocationUnsupported' app/src/main/java/com/example/GeminiErrorMapper.kt
+          echo "Gemini IPv4 fallback applied successfully."
+
       - name: Inject Gemini key when configured
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -110,4 +120,4 @@ jobs:
             artifacts/MKSH-Planner-fixed-debug.apk \
             artifacts/SHA256.txt \
             --title "MKSH Planner fixed debug" \
-            --notes "Automated test + build. Gemini key comes from GitHub Actions Secret; no Gemini key settings are shown in the app UI."
+            --notes "Automated tests + build. Gemini key comes from GitHub Actions Secret. Location errors automatically retry over IPv4 before being shown to the user."
