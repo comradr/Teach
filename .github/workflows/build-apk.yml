@@ -49,7 +49,8 @@ jobs:
 
       - name: Apply current fixes
         run: |
-          base64 -d mksh-overlay.patch.gz.b64 | gzip -dc > /tmp/mksh-overlay.patch
+          cat mksh-overlay.part00.b64 mksh-overlay.part01.b64 mksh-overlay.part02.b64 mksh-overlay.part03.b64 mksh-overlay.part04.b64 \
+            | base64 -d | gzip -dc > /tmp/mksh-overlay.patch
           cd project
           git init -q
           git apply --check /tmp/mksh-overlay.patch
@@ -58,6 +59,12 @@ jobs:
           test -f app/src/main/java/com/example/GeminiApiKeyProvider.kt
           test -f app/src/main/java/com/example/GeminiErrorMapper.kt
           grep -q 'x-goog-api-key' app/src/main/java/com/example/GeminiApiService.kt
+          grep -q 'Шаблоны' app/src/main/java/com/example/MainActivity.kt
+          grep -q 'Очистить' app/src/main/java/com/example/MainActivity.kt
+          if grep -q 'Настройки Gemini' app/src/main/java/com/example/MainActivity.kt; then
+            echo "Gemini settings UI unexpectedly remains"
+            exit 1
+          fi
 
       - name: Inject Gemini key when configured
         env:
@@ -67,7 +74,8 @@ jobs:
             printf 'GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY" > project/.env
             echo "Gemini key injected from GitHub Actions secret."
           else
-            echo "GEMINI_API_KEY secret is not configured. APK can accept the key from the in-app Gemini settings."
+            echo "GEMINI_API_KEY secret is not configured. Add it in repository Actions Secrets and rebuild."
+            exit 1
           fi
 
       - name: Run unit tests
@@ -102,4 +110,4 @@ jobs:
             artifacts/MKSH-Planner-fixed-debug.apk \
             artifacts/SHA256.txt \
             --title "MKSH Planner fixed debug" \
-            --notes "Automated test + build with Gemini error handling and in-app API key settings fixes."
+            --notes "Automated test + build. Gemini key comes from GitHub Actions Secret; no Gemini key settings are shown in the app UI."
