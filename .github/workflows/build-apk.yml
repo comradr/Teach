@@ -57,6 +57,10 @@ jobs:
         working-directory: project
         run: ./gradlew --no-daemon testDebugUnitTest --stacktrace
 
+      - name: Compile adaptive Compose tests
+        working-directory: project
+        run: ./gradlew --no-daemon assembleDebugAndroidTest --stacktrace
+
       - name: Run Android lint
         working-directory: project
         run: ./gradlew --no-daemon lintDebug --stacktrace
@@ -85,4 +89,4 @@ jobs:
           gh release delete build-current --yes --cleanup-tag || true
           git tag -f build-current
           git push -f origin build-current
-          gh release create build-current artifacts/MKSH-Planner-kawaii-debug.apk artifacts/SHA256.txt --title "MKSH Planner kawaii debug" --notes "Unit tests, lint and assembleDebug completed successfully."
+          gh release create build-current artifacts/MKSH-Planner-kawaii-debug.apk artifacts/SHA256.txt --title "Plania debug" --notes "Unit tests, adaptive Compose test compilation, lint and assembleDebug completed successfully."
