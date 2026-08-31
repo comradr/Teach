@@ -64,10 +64,11 @@ jobs:
         working-directory: project
         run: ./gradlew --no-daemon assembleDebug --stacktrace
 
-      - name: Collect APK
+      - name: Collect APK and signing tool
         run: |
           mkdir -p artifacts
           cp project/app/build/outputs/apk/debug/app-debug.apk artifacts/MKSH-Planner-kawaii-debug.apk
+          cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" artifacts/apksigner.jar
           sha256sum artifacts/MKSH-Planner-kawaii-debug.apk > artifacts/SHA256.txt
 
       - name: Upload workflow artifact
