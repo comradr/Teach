@@ -249,9 +249,12 @@ private fun StringBuilder.appendHtmlColGroup(columns: Int) {
 
     append("<colgroup>")
     repeat(columns) { column ->
-        val width = weights?.get(column) ?: (100.0 / columns)
         append("<col style=\"width:")
-        append(if (width is Int) width.toString() else String.format(java.util.Locale.US, "%.3f", width))
+        if (weights != null) {
+            append(weights[column])
+        } else {
+            append(String.format(java.util.Locale.US, "%.3f", 100.0 / columns))
+        }
         append("%\">")
     }
     append("</colgroup>")
@@ -291,7 +294,9 @@ private fun escapeHtml(value: String): String = value
     .replace("'", "&#39;")
 
 internal fun cardsMarkdownToHtml(markdown: String): String {
-    var body = exportBreakTagRegex.replace(extractCardsForPrinting(markdown), "\n")
+    // Keep an inline <br> inside its current list/card block; only physical Markdown newlines
+    // participate in structural parsing below.
+    var body = exportBreakTagRegex.replace(extractCardsForPrinting(markdown), "<br>")
         .replace(Regex("\\*\\*(.*?)\\*\\*"), "<b>$1</b>")
         .replace(Regex("(?<!\\*)\\*([^*\\n]+?)\\*(?!\\*)"), "<i>$1</i>")
         .replace(Regex("(?<!_)_([^_\\n]+?)_(?!_)"), "<i>$1</i>")
