@@ -6,17 +6,38 @@ import org.junit.Test
 
 class RtfExporterTest {
     @Test
-    fun `markdown table becomes native rtf table`() {
+    fun `markdown table becomes bordered native rtf table`() {
         val rtf = markdownToRtf("""
-            | Время | Класс 1 | Класс 2 |
-            |---|---|---|
-            | 0–5 | Проверка | Работа |
+            | Время | Этап урока | Действия учителя | Деятельность учеников | Материалы |
+            |---|---|---|---|---|
+            | 0–5 | Начало | Проверка | Работа | Тетради |
         """.trimIndent())
 
         assertTrue(rtf.contains("\\trowd"))
-        assertTrue(rtf.contains("\\cellx"))
+        assertTrue(rtf.contains("\\intbl"))
+        assertTrue(rtf.contains("\\cellx816"))
+        assertTrue(rtf.contains("\\cellx10200"))
+        assertTrue(rtf.contains("\\clbrdrt\\brdrs\\brdrw10"))
+        assertTrue(rtf.contains("\\clbrdrr\\brdrs\\brdrw10"))
+        assertTrue(rtf.contains("\\clcbpat2"))
         assertTrue(rtf.contains("\\row"))
         assertFalse(rtf.contains("|---|"))
+    }
+
+    @Test
+    fun `html breaks and markdown emphasis are rendered instead of leaking`() {
+        val rtf = markdownToRtf("""
+            | Этап | Действия учителя | Ученики |
+            |---|---|---|
+            | Разминка | **На доске:** П п<br>Запишите *пары букв*.<br/>Объясните _правило_. | Работают |
+        """.trimIndent())
+
+        assertFalse(rtf.contains("<br", ignoreCase = true))
+        assertTrue(rtf.contains("\\line "))
+        assertTrue(rtf.contains("\\b "))
+        assertTrue(rtf.contains("\\i "))
+        assertFalse(rtf.contains("*пары букв*"))
+        assertFalse(rtf.contains("_правило_"))
     }
 
     @Test
@@ -26,5 +47,13 @@ class RtfExporterTest {
         assertTrue(rtf.contains("\\bullet"))
         assertTrue(rtf.contains("\\u1055?"))
         assertTrue(rtf.contains("\\b "))
+    }
+
+    @Test
+    fun `common html entities do not leak into rtf`() {
+        val rtf = markdownToRtf("Тема:&nbsp;имена &amp; фамилии")
+        assertFalse(rtf.contains("&nbsp;"))
+        assertFalse(rtf.contains("&amp;"))
+        assertTrue(rtf.contains(" & "))
     }
 }
