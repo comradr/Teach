@@ -34,16 +34,19 @@ jobs:
           cat .ci/v152/patch_*.b64 | base64 -d > /tmp/v152.patch.gz
           cat .ci/v152fix/patch_*.b64 | base64 -d > /tmp/v152fix.patch.gz
           cat .ci/v153final/patch_*.b64 | base64 -d > /tmp/v153.patch.gz
+          cat .ci/v153fix2/patch_*.b64 | base64 -d > /tmp/v153fix2.patch.gz
 
           gzip -t /tmp/v151.patch.gz
           gzip -t /tmp/v152.patch.gz
           gzip -t /tmp/v152fix.patch.gz
           gzip -t /tmp/v153.patch.gz
+          gzip -t /tmp/v153fix2.patch.gz
 
           gzip -dc /tmp/v151.patch.gz > /tmp/v151.patch
           gzip -dc /tmp/v152.patch.gz > /tmp/v152.patch
           gzip -dc /tmp/v152fix.patch.gz > /tmp/v152fix.patch
           gzip -dc /tmp/v153.patch.gz > /tmp/v153.patch
+          gzip -dc /tmp/v153fix2.patch.gz > /tmp/v153fix2.patch
 
           cd project
           git init -q
@@ -65,6 +68,11 @@ jobs:
 
           git apply --check /tmp/v153.patch
           git apply /tmp/v153.patch
+          git add -A
+          git -c user.name=ci -c user.email=ci@local commit -qm v153
+
+          git apply --check /tmp/v153fix2.patch
+          git apply /tmp/v153fix2.patch
           git diff --check
           chmod +x gradlew
 
