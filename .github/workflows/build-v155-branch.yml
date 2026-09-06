@@ -45,6 +45,7 @@ jobs:
           done
 
           echo "463737fff74945f4917eb696ecfc72a22f35fd66c5c0319c1e1d033bef51d49c  /tmp/v155.patch.gz" | sha256sum -c -
+          echo "5787795081b18d0809e5934ed0f761ee65ee9dc7a073a1ecfba4d438be409af1  .ci/v155fix.patch" | sha256sum -c -
 
           cd project
           git init -q
@@ -58,6 +59,11 @@ jobs:
 
           git apply --check /tmp/v155.patch
           git apply /tmp/v155.patch
+          git add -A
+          git -c user.name=ci -c user.email=ci@local commit -qm v155
+
+          git apply --check ../.ci/v155fix.patch
+          git apply ../.ci/v155fix.patch
           git diff --check
           chmod +x gradlew
 
