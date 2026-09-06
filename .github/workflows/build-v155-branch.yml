@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -38,14 +38,16 @@ jobs:
           cat .ci/v154/patch_*.b64 | base64 -d > /tmp/v154.patch.gz
           cat .ci/v154fix/patch_*.b64 | base64 -d > /tmp/v154fix.patch.gz
           cat .ci/v155/part_*.bin > /tmp/v155.patch.gz
+          cat .ci/v155fix2/part_*.bin > /tmp/v155fix2.patch.gz
 
-          for p in v151 v152 v152fix v153 v153fix2 v154 v154fix v155; do
+          for p in v151 v152 v152fix v153 v153fix2 v154 v154fix v155 v155fix2; do
             gzip -t "/tmp/$p.patch.gz"
             gzip -dc "/tmp/$p.patch.gz" > "/tmp/$p.patch"
           done
 
           echo "463737fff74945f4917eb696ecfc72a22f35fd66c5c0319c1e1d033bef51d49c  /tmp/v155.patch.gz" | sha256sum -c -
           echo "5787795081b18d0809e5934ed0f761ee65ee9dc7a073a1ecfba4d438be409af1  .ci/v155fix.patch" | sha256sum -c -
+          echo "1f818f4c2a1578516c560d2db45af9a43a4889140880e92b554e25e3ee52569c  /tmp/v155fix2.patch.gz" | sha256sum -c -
 
           cd project
           git init -q
@@ -64,6 +66,11 @@ jobs:
 
           git apply --check ../.ci/v155fix.patch
           git apply ../.ci/v155fix.patch
+          git add -A
+          git -c user.name=ci -c user.email=ci@local commit -qm v155fix
+
+          git apply --check /tmp/v155fix2.patch
+          git apply /tmp/v155fix2.patch
           git diff --check
           chmod +x gradlew
 
