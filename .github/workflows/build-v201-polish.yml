@@ -41,6 +41,7 @@ jobs:
           cat .ci/v155fix2/part_*.bin > /tmp/v155fix2.patch.gz
           cp .ci/v200.patch /tmp/v200.patch
           cp .ci/v201.patch /tmp/v201.patch
+          cp .ci/v201fix.patch /tmp/v201fix.patch
 
           for p in v151 v152 v152fix v153 v153fix2 v154 v154fix v155 v155fix2; do
             gzip -t "/tmp/$p.patch.gz"
@@ -52,6 +53,7 @@ jobs:
           echo "1f818f4c2a1578516c560d2db45af9a43a4889140880e92b554e25e3ee52569c  /tmp/v155fix2.patch.gz" | sha256sum -c -
           echo "9f919e95b6cfb1386ee78f676c698a51b36c1c8d864a334341b923fb27b972f4  /tmp/v200.patch" | sha256sum -c -
           echo "d3014feebcac96c1e1a239d68a4ff66346000433b0ad8cf2b26b174dad65dc11  /tmp/v201.patch" | sha256sum -c -
+          echo "d348850cd180f63745741e19217a2f7fd0be642eb20fa18e991b0136ce8251f2  /tmp/v201fix.patch" | sha256sum -c -
 
           cd project
           git init -q
@@ -85,6 +87,11 @@ jobs:
 
           git apply --check /tmp/v201.patch
           git apply /tmp/v201.patch
+          git add -A
+          git -c user.name=ci -c user.email=ci@local commit -qm v201
+
+          git apply --check /tmp/v201fix.patch
+          git apply /tmp/v201fix.patch
           git diff --check
           chmod +x gradlew
 
