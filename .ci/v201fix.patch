@@ -1,0 +1,12 @@
+diff --git a/app/src/main/java/com/example/ui/screens/plan_detail/PlanDetailScreen.kt b/app/src/main/java/com/example/ui/screens/plan_detail/PlanDetailScreen.kt
+index 19554a5..6c3cece 100644
+--- a/app/src/main/java/com/example/ui/screens/plan_detail/PlanDetailScreen.kt
++++ b/app/src/main/java/com/example/ui/screens/plan_detail/PlanDetailScreen.kt
+@@ -876,7 +876,6 @@ private fun PlanSourcesTab(
+                         }
+                     }
+                 }
+-            }
+         }
+     }
+ }
