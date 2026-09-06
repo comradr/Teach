@@ -1,0 +1,258 @@
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+index 66ff028..7854902 100644
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -15,8 +15,8 @@ android {
+     applicationId = "com.aistudio.lessonplanner.xyazqw"
+     minSdk = 24
+     targetSdk = 36
+-    versionCode = 22
+-    versionName = "2.0.0"
++    versionCode = 23
++    versionName = "2.0.1"
+ 
+     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+   }
+diff --git a/app/src/main/java/com/example/ui/screens/generator/GeneratorComponents.kt b/app/src/main/java/com/example/ui/screens/generator/GeneratorComponents.kt
+index 616bd2f..62c0377 100644
+--- a/app/src/main/java/com/example/ui/screens/generator/GeneratorComponents.kt
++++ b/app/src/main/java/com/example/ui/screens/generator/GeneratorComponents.kt
+@@ -374,9 +374,9 @@ fun ClassSectionCard(
+             shape = RoundedCornerShape(16.dp),
+             colors = plannerFieldColors(accentColor)
+         )
+-        Text("Готовый план — основа (не материал урока)", style = MaterialTheme.typography.titleSmall)
++        Text("Основа из старого плана", style = MaterialTheme.typography.titleSmall)
+         Text(
+-            "Используйте этот блок только когда хотите взять структуру старого урока. Word здесь считается основой плана, а не новым раздаточным материалом.",
++            "Необязательно · используйте только для повторного использования структуры.",
+             style = MaterialTheme.typography.bodySmall,
+             color = MaterialTheme.colorScheme.onSurfaceVariant
+         )
+@@ -432,9 +432,9 @@ fun ClassSectionCard(
+             }
+         }
+ 
+-        Text("Материалы к этому уроку", style = MaterialTheme.typography.titleSmall)
++        Text("Материалы урока", style = MaterialTheme.typography.titleSmall)
+         Text(
+-            "Добавляйте сюда Word (DOCX), PDF и изображения с текстами и заданиями. DOCX используется при генерации и после сохранения остаётся во вкладке «Источники» этого урока. PDF/DOC сохраняются как вложения без выдуманного распознавания.",
++            "DOCX · PDF · фото",
+             style = MaterialTheme.typography.bodySmall,
+             color = MaterialTheme.colorScheme.onSurfaceVariant
+         )
+@@ -442,7 +442,7 @@ fun ClassSectionCard(
+             OutlinedButton(onClick = onPickSavedMaterial, modifier = Modifier.weight(1f)) {
+                 Icon(Icons.Default.FolderOpen, contentDescription = null)
+                 Spacer(Modifier.width(6.dp))
+-                Text("Сохранённые")
++                Text("Из сохранённых")
+             }
+             OutlinedButton(onClick = onImportMaterials, modifier = Modifier.weight(1f)) {
+                 Icon(Icons.Default.AttachFile, contentDescription = null)
+@@ -503,13 +503,8 @@ fun ClassSectionCard(
+             }
+         }
+ 
+-        Text(
+-            "Фото с камеры или галереи тоже используются при генерации и после сохранения останутся в «Источниках» урока.",
+-            style = MaterialTheme.typography.bodySmall,
+-            color = MaterialTheme.colorScheme.onSurfaceVariant
+-        )
+         PhotosSection(
+-            title = "Фото с камеры или галереи",
++            title = "Фото",
+             images = images,
+             onLaunchCamera = onCamera,
+             onLaunchGallery = onGallery,
+diff --git a/app/src/main/java/com/example/ui/screens/plan_detail/PlanDetailScreen.kt b/app/src/main/java/com/example/ui/screens/plan_detail/PlanDetailScreen.kt
+index d779e35..19554a5 100644
+--- a/app/src/main/java/com/example/ui/screens/plan_detail/PlanDetailScreen.kt
++++ b/app/src/main/java/com/example/ui/screens/plan_detail/PlanDetailScreen.kt
+@@ -796,7 +796,7 @@ private fun PlanSourcesTab(
+ 
+     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+         Text("Источники урока", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+-        Text("Только файлы, которые относятся к этому уроку: DOCX, PDF и изображения. Они не занимают место на экране папки и остаются привязаны к уроку.", color = MaterialTheme.colorScheme.onSurfaceVariant)
++        Text("DOCX, PDF и фото, привязанные к этому уроку.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+         if (plan.useSecondClass) {
+             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                 FilterChip(selected = classSlot == "A", onClick = { classSlot = "A" }, label = { Text("Класс 1") })
+@@ -813,17 +813,25 @@ private fun PlanSourcesTab(
+                 Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(6.dp)); Text("Ранее загруженные")
+             }
+         }
+-        if (linked.isEmpty()) {
+-            com.example.ui.components.SoftCard { Text("К этому уроку пока не прикреплены источники.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
++        val visibleLinked = if (plan.useSecondClass) {
++            linked.filter { it.classSlot == classSlot }
++        } else linked
++        if (visibleLinked.isEmpty()) {
++            com.example.ui.components.SoftCard {
++                Text(
++                    if (plan.useSecondClass) "Для выбранной группы источников пока нет." else "К этому уроку пока не прикреплены источники.",
++                    color = MaterialTheme.colorScheme.onSurfaceVariant
++                )
++            }
+         } else {
+-            val groups = if (plan.useSecondClass) linked.groupBy { it.classSlot } else mapOf("COMMON" to linked)
+-            groups.forEach { (slot, items) ->
++            if (plan.useSecondClass) {
+                 Text(
+-                    lessonClassSlotLabel(plan.useSecondClass, slot),
++                    lessonClassSlotLabel(true, classSlot),
+                     style = MaterialTheme.typography.titleMedium,
+                     fontWeight = FontWeight.SemiBold
+                 )
+-                items.forEach { material ->
++            }
++            visibleLinked.forEach { material ->
+                     com.example.ui.components.SoftCard {
+                         Row(verticalAlignment = Alignment.CenterVertically) {
+                             LessonMaterialThumbnail(
+@@ -903,17 +911,20 @@ private fun PlanWorksheetsTab(
+     val dao = database.plannerDao()
+     val repository = remember(database) { com.example.data.local.PlannerRepository(dao) }
+     val linked by dao.observeLinkedWorksheets(plan.id).collectAsState(initial = emptyList())
+-    val available by dao.observeWorksheetSummariesForFolder(plan.folderId).collectAsState(initial = emptyList())
++    val availableInFolder by dao.observeWorksheetSummariesForFolder(plan.folderId).collectAsState(initial = emptyList())
++    val allAvailable by dao.observeWorksheetSummaries().collectAsState(initial = emptyList())
+     val scope = rememberCoroutineScope()
+     val webView = remember(context) { WebView(context) }
+     DisposableEffect(webView) { onDispose { webView.destroy() } }
+     var showAttachDialog by remember { mutableStateOf(false) }
+     var attachQuery by rememberSaveable(plan.id) { mutableStateOf("") }
+     var attachClassSlot by rememberSaveable(plan.id) { mutableStateOf(if (plan.useSecondClass) "A" else "COMMON") }
++    var attachShowAll by rememberSaveable(plan.id) { mutableStateOf(false) }
+ 
+     if (showAttachDialog) {
+-        val visible = available.filter { summary ->
+-            attachQuery.isBlank() || sequenceOf(summary.title, summary.subject, summary.grade, summary.topic)
++        val source = if (attachShowAll) allAvailable else availableInFolder
++        val visible = source.filter { summary ->
++            attachQuery.isBlank() || sequenceOf(summary.title, summary.subject, summary.grade, summary.topic, summary.folderName)
+                 .any { it.contains(attachQuery.trim(), ignoreCase = true) }
+         }
+         AlertDialog(
+@@ -929,23 +940,47 @@ private fun PlanWorksheetsTab(
+                             FilterChip(selected = attachClassSlot == "COMMON", onClick = { attachClassSlot = "COMMON" }, label = { Text("Общий") })
+                         }
+                     }
++                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
++                        FilterChip(
++                            selected = !attachShowAll,
++                            onClick = { attachShowAll = false },
++                            label = { Text("Эта папка") }
++                        )
++                        FilterChip(
++                            selected = attachShowAll,
++                            onClick = { attachShowAll = true },
++                            label = { Text("Все листы") }
++                        )
++                    }
+                     OutlinedTextField(
+                         value = attachQuery,
+                         onValueChange = { attachQuery = it },
+                         modifier = Modifier.fillMaxWidth(),
+                         singleLine = true,
+                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+-                        placeholder = { Text("Найти лист в этой папке") }
++                        placeholder = { Text("Найти лист") }
+                     )
+                     if (visible.isEmpty()) {
+-                        Text("В этой папке нет подходящих сохранённых листов.", color = MaterialTheme.colorScheme.onSurfaceVariant)
++                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
++                            Text(
++                                if (attachShowAll) "Сохранённых листов пока нет." else "В этой папке сохранённых листов пока нет.",
++                                color = MaterialTheme.colorScheme.onSurfaceVariant
++                            )
++                            if (!attachShowAll && allAvailable.isNotEmpty()) {
++                                TextButton(onClick = { attachShowAll = true }) {
++                                    Text("Показать все сохранённые листы (${allAvailable.size})")
++                                }
++                            }
++                        }
+                     } else {
+                         LazyColumn(Modifier.heightIn(max = 380.dp)) {
+                             items(visible, key = { it.id }) { summary ->
+                                 ListItem(
+                                     headlineContent = { Text(summary.title) },
+                                     supportingContent = {
+-                                        Text("${listOf(summary.subject, summary.grade, summary.topic).filter { it.isNotBlank() }.joinToString(" · ")} · ${summary.taskCount} заданий")
++                                        val meta = listOf(summary.subject, summary.grade, summary.topic).filter { it.isNotBlank() }.joinToString(" · ")
++                                        val folder = if (summary.folderId != plan.folderId) "${summary.folderName} · " else ""
++                                        Text("$folder$meta · ${summary.taskCount} заданий")
+                                     },
+                                     leadingContent = { Icon(Icons.Default.Description, contentDescription = null) },
+                                     modifier = Modifier.clickable {
+@@ -954,13 +989,17 @@ private fun PlanWorksheetsTab(
+                                             if (revision == null) {
+                                                 android.widget.Toast.makeText(context, "У листа нет доступной редакции.", android.widget.Toast.LENGTH_LONG).show()
+                                             } else {
+-                                                val result = repository.linkWorksheetRevisionToPlan(plan.id, revision.id, attachClassSlot)
+-                                                if (result == -1L) {
+-                                                    android.widget.Toast.makeText(context, "Эта редакция уже прикреплена к уроку.", android.widget.Toast.LENGTH_SHORT).show()
+-                                                } else {
+-                                                    android.widget.Toast.makeText(context, "Лист прикреплён к уроку.", android.widget.Toast.LENGTH_SHORT).show()
+-                                                    showAttachDialog = false
+-                                                    attachQuery = ""
++                                                val result = repository.reuseWorksheetRevisionInPlan(summary.id, revision.id, plan.id, attachClassSlot)
++                                                when {
++                                                    result == null -> android.widget.Toast.makeText(context, "Не удалось прикрепить лист.", android.widget.Toast.LENGTH_LONG).show()
++                                                    result.alreadyLinked -> android.widget.Toast.makeText(context, "Эта редакция уже прикреплена к уроку.", android.widget.Toast.LENGTH_SHORT).show()
++                                                    else -> {
++                                                        val message = if (result.copiedToTargetFolder) "Лист скопирован в эту папку и прикреплён." else "Лист прикреплён к уроку."
++                                                        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
++                                                        showAttachDialog = false
++                                                        attachQuery = ""
++                                                        attachShowAll = false
++                                                    }
+                                                 }
+                                             }
+                                         }
+diff --git a/app/src/main/java/com/example/ui/screens/worksheets/WorksheetDetailScreen.kt b/app/src/main/java/com/example/ui/screens/worksheets/WorksheetDetailScreen.kt
+index 7a353e1..6ec50b6 100644
+--- a/app/src/main/java/com/example/ui/screens/worksheets/WorksheetDetailScreen.kt
++++ b/app/src/main/java/com/example/ui/screens/worksheets/WorksheetDetailScreen.kt
+@@ -459,19 +459,30 @@ private fun WorksheetPrintPreviewDialog(
+     onDismiss: () -> Unit
+ ) {
+     val context = LocalContext.current
++    val previewHtml = remember(html) {
++        val pageWidth = if (html.contains("size: A5", ignoreCase = true)) "128mm" else "186mm"
++        html.replace(
++            "</style>",
++            "@media screen { html { background:#f3f1f5; } body { width:$pageWidth; margin:0 auto !important; padding:4mm; background:#fff; } } </style>"
++        )
++    }
+     val previewWebView = remember(context) {
+         WebView(context).apply {
+             settings.javaScriptEnabled = false
+             settings.builtInZoomControls = true
+             settings.displayZoomControls = false
++            settings.useWideViewPort = true
++            settings.loadWithOverviewMode = true
++            settings.setSupportZoom(true)
++            setInitialScale(0)
+             setBackgroundColor(android.graphics.Color.WHITE)
+         }
+     }
+     DisposableEffect(previewWebView) {
+         onDispose { previewWebView.destroy() }
+     }
+-    LaunchedEffect(html) {
+-        previewWebView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
++    LaunchedEffect(previewHtml) {
++        previewWebView.loadDataWithBaseURL(null, previewHtml, "text/html", "UTF-8", null)
+     }
+ 
+     Dialog(
+@@ -499,7 +510,7 @@ private fun WorksheetPrintPreviewDialog(
+                 AndroidView(
+                     factory = { previewWebView },
+                     update = { view ->
+-                        if (view.url == null) view.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
++                        if (view.url == null) view.loadDataWithBaseURL(null, previewHtml, "text/html", "UTF-8", null)
+                     },
+                     modifier = Modifier.weight(1f).fillMaxWidth()
+                 )
