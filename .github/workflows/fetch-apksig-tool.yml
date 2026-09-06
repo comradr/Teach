@@ -21,7 +21,9 @@ jobs:
           curl -L --fail --retry 3 \
             https://dl.google.com/dl/android/maven2/com/android/tools/build/apksig/9.1.1/apksig-9.1.1.jar \
             -o apksig-9.1.1.jar
-          java -cp apksig-9.1.1.jar com.android.apksigner.ApkSignerTool --help >/dev/null
+          test -s apksig-9.1.1.jar
+          jar tf apksig-9.1.1.jar | grep -q 'com/android/apksig/ApkSigner.class'
+          jar tf apksig-9.1.1.jar | grep -q 'com/android/apksig/ApkVerifier.class'
           sha256sum apksig-9.1.1.jar
       - name: Upload apksig
         uses: actions/upload-artifact@v4
