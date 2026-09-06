@@ -1,0 +1,31 @@
+name: Fetch Android apksig tool
+
+on:
+  push:
+    branches:
+      - plania-v1.5.2-audit-update
+    paths:
+      - '.github/workflows/fetch-apksig-tool.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download official apksig
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 \
+            https://dl.google.com/dl/android/maven2/com/android/tools/build/apksig/9.1.1/apksig-9.1.1.jar \
+            -o apksig-9.1.1.jar
+          java -cp apksig-9.1.1.jar com.android.apksigner.ApkSignerTool --help >/dev/null
+          sha256sum apksig-9.1.1.jar
+      - name: Upload apksig
+        uses: actions/upload-artifact@v4
+        with:
+          name: apksig-9.1.1-tool
+          path: apksig-9.1.1.jar
+          if-no-files-found: error
