@@ -31,6 +31,7 @@ jobs:
           unzip -q MKSH_Planner_build_ready.zip -d project
           cat .ci/v151/patch_*.b64 | base64 -d | gzip -d > /tmp/v151.patch
           cat .ci/v152/patch_*.b64 | base64 -d | gzip -d > /tmp/v152.patch
+          cat .ci/v152fix/patch_*.b64 | base64 -d | gzip -d > /tmp/v152fix.patch
           cd project
           git init -q
           git apply --check /tmp/v151.patch
@@ -39,6 +40,10 @@ jobs:
           git -c user.name=ci -c user.email=ci@local commit -qm v151
           git apply --check /tmp/v152.patch
           git apply /tmp/v152.patch
+          git add -A
+          git -c user.name=ci -c user.email=ci@local commit -qm v152
+          git apply --check /tmp/v152fix.patch
+          git apply /tmp/v152fix.patch
           chmod +x gradlew
           grep -n "versionCode\|versionName" app/build.gradle.kts
 
