@@ -36,8 +36,9 @@ jobs:
           cat .ci/v153final/patch_*.b64 | base64 -d > /tmp/v153.patch.gz
           cat .ci/v153fix2/patch_*.b64 | base64 -d > /tmp/v153fix2.patch.gz
           cat .ci/v154/patch_*.b64 | base64 -d > /tmp/v154.patch.gz
+          cat .ci/v154fix/patch_*.b64 | base64 -d > /tmp/v154fix.patch.gz
 
-          for p in v151 v152 v152fix v153 v153fix2 v154; do
+          for p in v151 v152 v152fix v153 v153fix2 v154 v154fix; do
             gzip -t "/tmp/$p.patch.gz"
             gzip -dc "/tmp/$p.patch.gz" > "/tmp/$p.patch"
           done
@@ -72,6 +73,11 @@ jobs:
 
           git apply --check /tmp/v154.patch
           git apply /tmp/v154.patch
+          git add -A
+          git -c user.name=ci -c user.email=ci@local commit -qm v154
+
+          git apply --check /tmp/v154fix.patch
+          git apply /tmp/v154fix.patch
           git diff --check
           chmod +x gradlew
 
