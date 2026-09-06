@@ -39,9 +39,9 @@ jobs:
           cat .ci/v154fix/patch_*.b64 | base64 -d > /tmp/v154fix.patch.gz
           cat .ci/v155/part_*.bin > /tmp/v155.patch.gz
           cat .ci/v155fix2/part_*.bin > /tmp/v155fix2.patch.gz
-          cp .ci/v200/patch.gz /tmp/v200.patch.gz
+          cp .ci/v200.patch /tmp/v200.patch
 
-          for p in v151 v152 v152fix v153 v153fix2 v154 v154fix v155 v155fix2 v200; do
+          for p in v151 v152 v152fix v153 v153fix2 v154 v154fix v155 v155fix2; do
             gzip -t "/tmp/$p.patch.gz"
             gzip -dc "/tmp/$p.patch.gz" > "/tmp/$p.patch"
           done
@@ -49,7 +49,7 @@ jobs:
           echo "463737fff74945f4917eb696ecfc72a22f35fd66c5c0319c1e1d033bef51d49c  /tmp/v155.patch.gz" | sha256sum -c -
           echo "5787795081b18d0809e5934ed0f761ee65ee9dc7a073a1ecfba4d438be409af1  .ci/v155fix.patch" | sha256sum -c -
           echo "1f818f4c2a1578516c560d2db45af9a43a4889140880e92b554e25e3ee52569c  /tmp/v155fix2.patch.gz" | sha256sum -c -
-          echo "451b866c5017ec5cbc9aa1c73bd884f4c22228ee93ad7286d7b277d7e8feef46  /tmp/v200.patch.gz" | sha256sum -c -
+          echo "9f919e95b6cfb1386ee78f676c698a51b36c1c8d864a334341b923fb27b972f4  /tmp/v200.patch" | sha256sum -c -
 
           cd project
           git init -q

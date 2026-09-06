@@ -1,0 +1,185 @@
+From 5adfb416198a32712cc3b656233e3e2eeda37a5a Mon Sep 17 00:00:00 2001
+From: oai <oai@local>
+Date: Sun, 6 Sep 2026 17:31:12 +0000
+Subject: [PATCH] Prepare Plania 2.0 print preview and version
+
+---
+ app/build.gradle.kts                          |   4 +-
+ .../worksheets/WorksheetDetailScreen.kt       | 114 ++++++++++++++++--
+ 2 files changed, 107 insertions(+), 11 deletions(-)
+
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+index 28b9729..66ff028 100644
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -15,8 +15,8 @@ android {
+     applicationId = "com.aistudio.lessonplanner.xyazqw"
+     minSdk = 24
+     targetSdk = 36
+-    versionCode = 21
+-    versionName = "1.5.5"
++    versionCode = 22
++    versionName = "2.0.0"
+ 
+     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+   }
+diff --git a/app/src/main/java/com/example/ui/screens/worksheets/WorksheetDetailScreen.kt b/app/src/main/java/com/example/ui/screens/worksheets/WorksheetDetailScreen.kt
+index 73ca818..7a353e1 100644
+--- a/app/src/main/java/com/example/ui/screens/worksheets/WorksheetDetailScreen.kt
++++ b/app/src/main/java/com/example/ui/screens/worksheets/WorksheetDetailScreen.kt
+@@ -12,6 +12,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
+ import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
+ import androidx.compose.ui.platform.LocalContext
++import androidx.compose.ui.viewinterop.AndroidView
++import androidx.compose.ui.window.Dialog
++import androidx.compose.ui.window.DialogProperties
+ import android.webkit.WebView
+ import androidx.compose.ui.text.font.FontWeight
+ import androidx.compose.ui.unit.dp
+@@ -45,6 +48,8 @@ fun WorksheetDetailScreen(
+     var selectedVariant by rememberSaveable(worksheetId) { mutableStateOf("A") }
+     var showPrintDialog by remember { mutableStateOf(false) }
+     var printSettings by remember { mutableStateOf<WorksheetPrintSettings?>(null) }
++    var printPreviewHtml by remember { mutableStateOf<String?>(null) }
++    var printPreviewSettings by remember { mutableStateOf<WorksheetPrintSettings?>(null) }
+     var showReuseDialog by remember { mutableStateOf(false) }
+     var reuseFolderId by remember { mutableStateOf<Long?>(null) }
+     var showDeleteConfirm by remember { mutableStateOf(false) }
+@@ -222,19 +227,37 @@ fun WorksheetDetailScreen(
+                 Button(onClick = {
+                     val finalSettings = (printSettings ?: settings).normalized(state!!.worksheet.profile)
+                     WorksheetPrintPreferences.save(context, finalSettings, state!!.worksheet.profile)
+-                    printWorksheetHtml(
+-                        context = context,
+-                        webView = webView,
+-                        jobName = "${state!!.worksheet.title} — лист и ответы",
+-                        html = worksheetPrintHtml(state!!.worksheet, state!!.revision, state!!.tasks, finalSettings)
+-                    )
++                    printPreviewSettings = finalSettings
++                    printPreviewHtml = worksheetPrintHtml(state!!.worksheet, state!!.revision, state!!.tasks, finalSettings)
+                     showPrintDialog = false
+-                }) { Text("Открыть печать") }
++                }) { Text("Предпросмотр") }
+             },
+             dismissButton = { TextButton(onClick = { showPrintDialog = false }) { Text("Отмена") } }
+         )
+     }
+ 
++    printPreviewHtml?.let { html ->
++        WorksheetPrintPreviewDialog(
++            title = state!!.worksheet.title,
++            html = html,
++            onBackToSettings = {
++                printPreviewHtml = null
++                showPrintDialog = true
++            },
++            onPrint = {
++                val finalSettings = printPreviewSettings ?: WorksheetPrintPreferences.load(context, state!!.worksheet.profile)
++                printWorksheetHtml(
++                    context = context,
++                    webView = webView,
++                    jobName = "${state!!.worksheet.title} — лист и ответы",
++                    html = worksheetPrintHtml(state!!.worksheet, state!!.revision, state!!.tasks, finalSettings)
++                )
++                printPreviewHtml = null
++            },
++            onDismiss = { printPreviewHtml = null }
++        )
++    }
++
+     LazyColumn(
+         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp),
+         verticalArrangement = Arrangement.spacedBy(10.dp),
+@@ -260,9 +283,9 @@ fun WorksheetDetailScreen(
+             }, modifier = Modifier.fillMaxWidth()) {
+                 Icon(Icons.Default.Print, contentDescription = null)
+                 Spacer(Modifier.width(8.dp))
+-                Text("PDF / Печать: задания → ответы")
++                Text("Предпросмотр / PDF / Печать")
+             }
+-            Text("A4/A5; для быстрых карточек — 1/2/4/6 экземпляров на страницу. Ответы всегда после ученической части.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
++            Text("Сначала увидите будущие страницы, затем откроется системная печать. A4/A5; для быстрых карточек — 1/2/4/6 экземпляров на страницу. Ответы всегда после ученической части.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+         }
+         if (pinnedRevision) {
+             item {
+@@ -425,3 +448,76 @@ fun WorksheetDetailScreen(
+ private fun parseWorksheetOptions(raw: String): List<String> = runCatching {
+     kotlinx.serialization.json.Json.decodeFromString<List<String>>(raw)
+ }.getOrDefault(emptyList())
++
++
++@Composable
++private fun WorksheetPrintPreviewDialog(
++    title: String,
++    html: String,
++    onBackToSettings: () -> Unit,
++    onPrint: () -> Unit,
++    onDismiss: () -> Unit
++) {
++    val context = LocalContext.current
++    val previewWebView = remember(context) {
++        WebView(context).apply {
++            settings.javaScriptEnabled = false
++            settings.builtInZoomControls = true
++            settings.displayZoomControls = false
++            setBackgroundColor(android.graphics.Color.WHITE)
++        }
++    }
++    DisposableEffect(previewWebView) {
++        onDispose { previewWebView.destroy() }
++    }
++    LaunchedEffect(html) {
++        previewWebView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
++    }
++
++    Dialog(
++        onDismissRequest = onDismiss,
++        properties = DialogProperties(usePlatformDefaultWidth = false)
++    ) {
++        Surface(
++            modifier = Modifier.fillMaxSize(),
++            color = MaterialTheme.colorScheme.background
++        ) {
++            Column(Modifier.fillMaxSize()) {
++                Row(
++                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
++                    verticalAlignment = Alignment.CenterVertically
++                ) {
++                    IconButton(onClick = onDismiss) {
++                        Icon(Icons.Default.Close, contentDescription = "Закрыть предпросмотр")
++                    }
++                    Column(Modifier.weight(1f)) {
++                        Text("Предпросмотр печати", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
++                        Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
++                    }
++                }
++                HorizontalDivider()
++                AndroidView(
++                    factory = { previewWebView },
++                    update = { view ->
++                        if (view.url == null) view.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
++                    },
++                    modifier = Modifier.weight(1f).fillMaxWidth()
++                )
++                HorizontalDivider()
++                Row(
++                    modifier = Modifier.fillMaxWidth().padding(12.dp),
++                    horizontalArrangement = Arrangement.spacedBy(8.dp)
++                ) {
++                    OutlinedButton(onClick = onBackToSettings, modifier = Modifier.weight(1f)) {
++                        Text("Настройки")
++                    }
++                    Button(onClick = onPrint, modifier = Modifier.weight(1f)) {
++                        Icon(Icons.Default.Print, contentDescription = null)
++                        Spacer(Modifier.width(6.dp))
++                        Text("Печатать / PDF")
++                    }
++                }
++            }
++        }
++    }
++}
+-- 
+2.47.3
+
